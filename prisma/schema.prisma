@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum Role {
+  VENDEDOR
+  GERENTE
+}
+
+enum ActivityType {
+  LLAMADA
+  VISITA
+  REUNION
+  COTIZACION
+  VENTA
+  SEGUIMIENTO
+}
+
+// Indicadores medibles: un conteo por tipo de actividad (VENTA = cantidad de ventas) + monto de ventas.
+enum Indicator {
+  LLAMADAS
+  VISITAS
+  REUNIONES
+  COTIZACIONES
+  VENTAS_CANTIDAD
+  SEGUIMIENTOS
+  VENTAS_MONTO
+}
+
+enum AdjustmentKind {
+  CORRECCION
+  ANULACION
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         Role
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  activities  Activity[]   @relation("ActivitySeller")
+  goals       Goal[]
+  adjustments Adjustment[] @relation("AdjustmentSeller")
+  madeAdjusts Adjustment[] @relation("AdjustmentActor")
+  auditLogs   AuditLog[]
+  clients     Client[]
+}
+
+model Client {
+  id          String   @id @default(cuid())
+  name        String
+  company     String
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  activities Activity[]
+}
+
+// Inmutable: corregir o anular crea un Adjustment, nunca edita esta fila.
+model Activity {
+  id          String       @id @default(cuid())
+  sellerId    String
+  seller      User         @relation("ActivitySeller", fields: [sellerId], references: [id])
+  clientId    String
+  client      Client       @relation(fields: [clientId], references: [id])
+  type        ActivityType
+  note        String?
+  amount      Decimal?     // colones; solo para VENTA
+  createdAt   DateTime     @default(now())
+  // Mes/año en America/Costa_Rica, calculados al insertar.
+  periodYear  Int
+  periodMonth Int
+
+  adjustments Adjustment[]
+
+  @@index([sellerId, periodYear, periodMonth])
+}
+
+// Ajuste de cantidad/monto contabilizado en el mes en que se hace (periodo actual).
+model Adjustment {
+  id          String         @id @default(cuid())
+  activityId  String
+  activity    Activity       @relation(fields: [activityId], references: [id])
+  sellerId    String
+  seller      User           @relation("AdjustmentSeller", fields: [sellerId], references: [id])
+  kind        AdjustmentKind
+  type        ActivityType
+  deltaCount  Int
+  deltaAmount Decimal        @default(0)
+  reason      String
+  actorId     String
+  actor       User           @relation("AdjustmentActor", fields: [actorId], references: [id])
+  createdAt   DateTime       @default(now())
+  periodYear  Int
+  periodMonth Int
+
+  @@index([sellerId, periodYear, periodMonth])
+}
+
+model Goal {
+  id        String    @id @default(cuid())
+  sellerId  String
+  seller    User      @relation(fields: [sellerId], references: [id])
+  year      Int
+  month     Int
+  indicator Indicator
+  target    Decimal  
+
+  @@unique([sellerId, year, month, indicator])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String
+  actor     User     @relation(fields: [actorId], references: [id])
+  entity    String
+  entityId  String
+  action    String
+  before    Json?
+  after     Json?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+}
