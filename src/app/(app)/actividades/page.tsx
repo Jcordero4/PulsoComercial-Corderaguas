@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { ActivityState } from "@/components/ActivityState";
 import { prisma } from "@/lib/db";
+import { loadEffectiveStates } from "@/lib/effectiveStates";
 import {
   ACTIVITY_LABELS,
   formatColones,
@@ -18,6 +20,7 @@ export default async function ActividadesPage() {
     orderBy: { createdAt: "desc" },
     take: 200,
   });
+  const states = await loadEffectiveStates(activities);
   return (
     <main className="space-y-4">
       <div className="flex items-center justify-between">
@@ -28,39 +31,60 @@ export default async function ActividadesPage() {
           Registrar
         </Link>
       </div>
-      <table className="w-full text-sm">
-        <thead className="text-left text-slate-500">
-          <tr>
-            <th className="py-2">Fecha</th>
-            {isManager && <th>Vendedor</th>}
-            <th>Tipo</th>
-            <th>Cliente</th>
-            <th>Monto</th>
-            <th>Nota</th>
-          </tr>
-        </thead>
-        <tbody>
-          {activities.map((a) => (
-            <tr key={a.id} className="border-t align-top">
-              <td className="whitespace-nowrap py-2">{formatDateTime(a.createdAt)}</td>
-              {isManager && <td>{a.seller.name}</td>}
-              <td>{ACTIVITY_LABELS[a.type as ActivityTypeValue]}</td>
-              <td>
-                {a.client.name} · {a.client.company}
-              </td>
-              <td>{a.amount != null ? formatColones(a.amount) : "—"}</td>
-              <td>{a.note}</td>
-            </tr>
-          ))}
-          {activities.length === 0 && (
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm [&_td]:pr-3 [&_th]:pr-3">
+          <thead className="text-left text-slate-500">
             <tr>
-              <td colSpan={6} className="py-4 text-slate-500">
-                Sin actividades todavía.
-              </td>
+              <th className="py-2">Fecha</th>
+              {isManager && <th>Vendedor</th>}
+              <th>Tipo</th>
+              <th>Cliente</th>
+              <th>Monto</th>
+              <th>Nota</th>
+              <th>Estado</th>
+              {isManager && <th />}
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {activities.map((a) => {
+              const state = states.get(a.id)!;
+              return (
+                <tr key={a.id} className="border-t align-top">
+                  <td className="whitespace-nowrap py-2">{formatDateTime(a.createdAt)}</td>
+                  {isManager && <td>{a.seller.name}</td>}
+                  <td className={state.voided ? "text-slate-400 line-through" : ""}>
+                    {ACTIVITY_LABELS[a.type as ActivityTypeValue]}
+                  </td>
+                  <td>
+                    {a.client.name} · {a.client.company}
+                  </td>
+                  <td className={state.voided ? "text-slate-400 line-through" : ""}>
+                    {a.amount != null ? formatColones(a.amount) : "—"}
+                  </td>
+                  <td>{a.note}</td>
+                  <td>
+                    <ActivityState state={state} />
+                  </td>
+                  {isManager && (
+                    <td className="whitespace-nowrap text-right">
+                      <Link className="underline" href={`/actividades/${a.id}/ajustar`}>
+                        {state.voided ? "Ver cambios" : "Corregir / anular"}
+                      </Link>
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
+            {activities.length === 0 && (
+              <tr>
+                <td colSpan={8} className="py-4 text-slate-500">
+                  Sin actividades todavía.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </main>
   );
 }

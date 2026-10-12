@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ActivityState } from "@/components/ActivityState";
 import { MetricsTable } from "@/components/MetricsTable";
 import { PeriodPicker, parsePeriod } from "@/components/PeriodPicker";
 import { ProgressChart } from "@/components/ProgressChart";
 import { singleChart } from "@/lib/chartData";
 import { prisma } from "@/lib/db";
+import { loadEffectiveStates } from "@/lib/effectiveStates";
 import {
   ACTIVITY_LABELS,
   MONTH_NAMES,
@@ -41,6 +43,7 @@ export default async function DetalleVendedor({
     }),
   ]);
   const chart = singleChart(metrics.rows, seller.name);
+  const states = await loadEffectiveStates(activities);
 
   return (
     <main className="space-y-8">
@@ -74,6 +77,7 @@ export default async function DetalleVendedor({
                 <th>Cliente</th>
                 <th>Monto</th>
                 <th>Nota</th>
+                <th>Estado</th>
               </tr>
             </thead>
             <tbody>
@@ -86,11 +90,14 @@ export default async function DetalleVendedor({
                   </td>
                   <td>{a.amount != null ? formatColones(a.amount) : "—"}</td>
                   <td>{a.note}</td>
+                  <td>
+                    <ActivityState state={states.get(a.id)!} />
+                  </td>
                 </tr>
               ))}
               {activities.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="py-4 text-[var(--ink-3)]">
+                  <td colSpan={6} className="py-4 text-[var(--ink-3)]">
                     Sin actividades registradas en este mes.
                   </td>
                 </tr>

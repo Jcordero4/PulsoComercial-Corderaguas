@@ -96,6 +96,11 @@ model Adjustment {
   type        ActivityType
   deltaCount  Int
   deltaAmount Decimal        @default(0)
+  // Una acción de gerencia puede generar 2 filas (cambio de tipo); comparten groupId.
+  groupId     String         @default(cuid())
+  // Estado vigente de la actividad tras esta acción (para reconstruir su historia).
+  afterType   ActivityType?
+  afterAmount Decimal?
   reason      String
   actorId     String
   actor       User           @relation("AdjustmentActor", fields: [actorId], references: [id])
