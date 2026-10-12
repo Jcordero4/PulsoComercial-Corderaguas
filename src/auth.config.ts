@@ -12,6 +12,9 @@ export const authConfig = {
       const path = request.nextUrl.pathname;
       const role = auth?.user?.role;
       if (path.startsWith("/login")) {
+        // Solo se redirige la navegación (GET). Redirigir el POST de una server action
+        // produce "unexpected response from the server" en el navegador.
+        if (request.method !== "GET") return true;
         return role ? Response.redirect(new URL("/", request.nextUrl)) : true;
       }
       if (!auth?.user) return false;

@@ -32,3 +32,33 @@ describe("clientSchema", () => {
     expect(clientSchema.safeParse({ name: "Ana", company: "X" }).success).toBe(true);
   });
 });
+
+import { goalSchema, passwordSchema, userSchema } from "./validators";
+
+describe("goalSchema", () => {
+  const base = { sellerId: "s1", year: "2026", month: "10" };
+  it("meta de conteo debe ser entera", () => {
+    expect(goalSchema.safeParse({ ...base, indicator: "LLAMADAS", target: "40" }).success).toBe(true);
+    expect(goalSchema.safeParse({ ...base, indicator: "LLAMADAS", target: "40.5" }).success).toBe(false);
+  });
+  it("meta de monto admite decimales", () => {
+    expect(goalSchema.safeParse({ ...base, indicator: "VENTAS_MONTO", target: "1500000,50" }).success).toBe(true);
+  });
+  it("rechaza cero, mes inválido e indicador desconocido", () => {
+    expect(goalSchema.safeParse({ ...base, indicator: "LLAMADAS", target: "0" }).success).toBe(false);
+    expect(goalSchema.safeParse({ ...base, month: "13", indicator: "LLAMADAS", target: "5" }).success).toBe(false);
+    expect(goalSchema.safeParse({ ...base, indicator: "X", target: "5" }).success).toBe(false);
+  });
+});
+
+describe("userSchema / passwordSchema", () => {
+  it("contraseña mínima de 10", () => {
+    expect(passwordSchema.safeParse("corta").success).toBe(false);
+    expect(passwordSchema.safeParse("suficientemente").success).toBe(true);
+  });
+  it("normaliza correo y valida rol", () => {
+    const r = userSchema.parse({ name: "Ana", email: " ANA@X.com ", role: "VENDEDOR", password: "una-clave-larga" });
+    expect(r.email).toBe("ana@x.com");
+    expect(userSchema.safeParse({ name: "A", email: "a@x.com", role: "ADMIN", password: "una-clave-larga" }).success).toBe(false);
+  });
+});

@@ -31,3 +31,31 @@ export const clientSchema = z.object({
   name: z.string().trim().min(1, "Nombre requerido").max(120),
   company: z.string().trim().min(1, "Empresa requerida").max(120),
 });
+
+import { INDICATORS } from "./labels";
+
+export const goalSchema = z
+  .object({
+    sellerId: z.string().min(1, "Selecciona un vendedor"),
+    indicator: z.enum(INDICATORS),
+    year: z.coerce.number().int().min(2024).max(2100),
+    month: z.coerce.number().int().min(1).max(12),
+    target: z.string(),
+  })
+  .superRefine((v, ctx) => {
+    const t = parseAmount(v.target);
+    if (t === null) {
+      ctx.addIssue({ code: "custom", path: ["target"], message: "La meta debe ser un número mayor a cero" });
+    } else if (v.indicator !== "VENTAS_MONTO" && !/^\d+$/.test(t)) {
+      ctx.addIssue({ code: "custom", path: ["target"], message: "Esta meta debe ser un número entero" });
+    }
+  });
+
+export const passwordSchema = z.string().min(10, "Mínimo 10 caracteres").max(100);
+
+export const userSchema = z.object({
+  name: z.string().trim().min(1, "Nombre requerido").max(100),
+  email: z.string().trim().toLowerCase().email("Correo inválido"),
+  role: z.enum(["VENDEDOR", "GERENTE"]),
+  password: passwordSchema,
+});

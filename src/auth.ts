@@ -12,6 +12,13 @@ const credentialsSchema = z.object({
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
+  logger: {
+    // Un login fallido es esperado: no se imprime como error con stack trace.
+    error(error) {
+      if ((error as { type?: string }).type === "CredentialsSignin") return;
+      console.error(error);
+    },
+  },
   providers: [
     Credentials({
       async authorize(raw) {
