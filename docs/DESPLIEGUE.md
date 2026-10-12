@@ -1,54 +1,51 @@
 # Despliegue en Supabase (PostgreSQL) y Vercel
 
-La aplicación se desarrolla con SQLite. Para producción hay que cambiar el proveedor de base de datos
-a PostgreSQL (Supabase). Pasos en orden:
+La aplicación usa PostgreSQL de Supabase tanto en desarrollo como en producción. El mismo proyecto de
+Supabase sirve para ambos mientras no haya datos reales; cuando los haya, conviene crear un segundo
+proyecto para desarrollo.
 
-## 1. Crear el proyecto en Supabase
+## 1. Supabase (ya hecho en este proyecto)
 
-1. Crea un proyecto (región cercana a Costa Rica, por ejemplo Virginia o São Paulo) y guarda la
-   contraseña de la base de datos en un gestor de contraseñas.
-2. En *Project Settings → Database → Connection string* copia dos cadenas:
-   - **Pooler, modo transaction (puerto 6543)** → será `DATABASE_URL` (para la app en Vercel).
-   - **Conexión directa o session (puerto 5432)** → será `DIRECT_URL` (para migraciones).
-3. Nunca pegues estas cadenas en el chat, en el repositorio ni en capturas.
+1. Proyecto creado (región `us-west-2`).
+2. Botón **Connect** → pestaña **ORM → Prisma**: copiar `DATABASE_URL` (pooler de transacciones, puerto 6543)
+   y `DIRECT_URL` (pooler de sesión, puerto 5432) al archivo `.env`.
+   Si la contraseña tiene caracteres especiales hay que codificarlos (`#` → `%23`, `@` → `%40`…).
+3. Aplicar el esquema: `npx prisma migrate deploy`.
+4. **Activar RLS en `_prisma_migrations`.** Las migraciones de la app ya activan RLS en las tablas propias
+   y retiran permisos a los roles de la API pública (`anon`, `authenticated`). La tabla interna de Prisma
+   la crea Prisma y hay que protegerla a mano, una sola vez:
+   ```sql
+   ALTER TABLE "_prisma_migrations" ENABLE ROW LEVEL SECURITY;
+   REVOKE ALL ON TABLE "_prisma_migrations" FROM anon, authenticated;
+   ```
+   (Se puede ejecutar en *SQL Editor* de Supabase.)
+   Por qué importa: Supabase expone las tablas de `public` por su API REST con la clave anónima. Sin RLS,
+   cualquiera con esa clave podría leer o escribir los datos. La aplicación se conecta como `postgres`
+   (ignora RLS), así que no se ve afectada.
+5. Crear los usuarios de ejemplo: `npm run db:seed` (ver paso 3).
 
-## 2. Cambiar el código a PostgreSQL
+## 2. Vercel
 
-1. `prisma/schema.prisma`: cambiar `provider = "sqlite"` por `provider = "postgresql"`.
-2. Instalar el adapter de Postgres y quitar el de SQLite:
-   `npm i @prisma/adapter-pg pg` y `npm rm @prisma/adapter-better-sqlite3 better-sqlite3`.
-3. `src/lib/db.ts` y `prisma/seed.ts`: usar `new PrismaPg({ connectionString: process.env.DATABASE_URL })`
-   en lugar del adapter de SQLite.
-4. `prisma.config.ts`: `datasource: { url: process.env.DIRECT_URL ?? process.env.DATABASE_URL }`.
-5. Las migraciones actuales son de SQLite y **no sirven para PostgreSQL**. Bórralas
-   (`prisma/migrations`) y crea una migración inicial nueva contra una base vacía:
-   `npx prisma migrate dev --name init` (con `DIRECT_URL` apuntando a Supabase o a un Postgres local).
-6. Comprobar con `npm test`. Las pruebas de integración usan SQLite; si el proveedor cambia, adaptarlas
-   para que usen una base PostgreSQL de prueba.
+1. Importar el repositorio de GitHub en Vercel (framework: Next.js; no cambiar los comandos).
+2. Variables de entorno (Production y Preview), copiadas desde tu `.env`:
+   - `DATABASE_URL` — pooler de transacciones (6543, con `?pgbouncer=true`).
+   - `DIRECT_URL` — pooler de sesión (5432). El build no ejecuta migraciones, pero se deja por consistencia.
+   - `AUTH_SECRET` — **uno distinto al de desarrollo**, generado con `npx auth secret`.
+   - `AUTH_TRUST_HOST=true` — solo si no despliegas en Vercel (allí se activa solo). Sin esto el inicio de
+     sesión falla con "UntrustedHost".
+   - **No** definas `SEED_PASSWORD` en Vercel: solo se usa en tu computadora.
+3. `postinstall` ejecuta `prisma generate`. Las migraciones se aplican aparte (`npx prisma migrate deploy`
+   desde tu computadora), no en cada build.
+4. Desplegar y recorrer la lista de comprobación.
 
-## 3. Aplicar el esquema y crear usuarios
+## 3. Usuarios reales
 
-```bash
-npx prisma migrate deploy      # con DIRECT_URL de Supabase
-```
+`npm run db:seed` crea Gerente 1-2 y Vendedor 1-3 (`*@pulso.local`) con la contraseña `SEED_PASSWORD`.
+Entra como gerente, crea los usuarios reales en *Usuarios*, **desactiva los de ejemplo** y cambia las
+contraseñas. Los datos de demostración (`prisma/demo.ts`) son solo para una base de pruebas y exigen
+`ALLOW_DEMO_DATA=true`; **no los ejecutes en la base de producción**.
 
-Para el primer acceso puedes correr `npm run db:seed` con una `SEED_PASSWORD` **fuerte y temporal**, entrar
-como gerente, crear los usuarios reales, desactivar los de ejemplo y cambiar las contraseñas. Después
-cambia o elimina la `SEED_PASSWORD`.
-
-## 4. Publicar en Vercel
-
-1. Importa el repositorio de GitHub en Vercel (framework: Next.js).
-2. Variables de entorno (Production y Preview):
-   - `DATABASE_URL` — pooler (6543), con `?pgbouncer=true`.
-   - `DIRECT_URL` — conexión directa (5432).
-   - `AUTH_SECRET` — generado con `npx auth secret`. Distinto al de desarrollo.
-   - `AUTH_TRUST_HOST=true` — **solo si no despliegas en Vercel** (Vercel lo activa solo). Sin esto el inicio
-     de sesión falla en producción con "UntrustedHost".
-3. `postinstall` ya ejecuta `prisma generate`. Las migraciones se aplican aparte (paso 3), no en cada build.
-4. Desplegar y probar con la lista de abajo.
-
-## 5. Lista de comprobación tras el despliegue
+## 4. Lista de comprobación tras el despliegue
 
 - [ ] Iniciar sesión como gerente y como vendedor.
 - [ ] El vendedor solo ve lo suyo y no entra a `/gerente`, `/usuarios` ni `/historial`.
@@ -61,8 +58,11 @@ cambia o elimina la `SEED_PASSWORD`.
 
 ## Seguridad y mantenimiento
 
-- Respaldos: activa los respaldos automáticos de Supabase y verifica cómo restaurar.
-- Rota `AUTH_SECRET` y las contraseñas de base de datos si se filtran (rotar `AUTH_SECRET` cierra todas las sesiones).
+- Respaldos: revisa el plan de Supabase (el gratuito no incluye respaldos diarios descargables) y define
+  cómo respaldar antes de cargar datos reales.
+- El plan gratuito de Supabase pausa los proyectos inactivos; el plan de pago evita pausas.
+- Rota `AUTH_SECRET` y la contraseña de la base si se filtran (rotar `AUTH_SECRET` cierra todas las sesiones).
+- No compartas el `.env` ni las cadenas de conexión por chat ni capturas de pantalla.
 - `npm audit` reporta vulnerabilidades altas en `mysql2` y `deepmerge-ts`, dependencias internas de la CLI de
   Prisma (herramienta de desarrollo, no se ejecuta en la aplicación). Revisar al actualizar Prisma.
 - El bloqueo por intentos fallidos se guarda en la base de datos, por lo que funciona igual en

@@ -4,7 +4,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 enum Role {
@@ -77,7 +77,7 @@ model Activity {
   client      Client       @relation(fields: [clientId], references: [id])
   type        ActivityType
   note        String?
-  amount      Decimal?     // colones; solo para VENTA
+  amount      Decimal?     @db.Decimal(14, 2) // colones; solo para VENTA
   createdAt   DateTime     @default(now())
   // Mes/año en America/Costa_Rica, calculados al insertar.
   periodYear  Int
@@ -98,12 +98,12 @@ model Adjustment {
   kind        AdjustmentKind
   type        ActivityType
   deltaCount  Int
-  deltaAmount Decimal        @default(0)
+  deltaAmount Decimal        @default(0) @db.Decimal(14, 2)
   // Una acción de gerencia puede generar 2 filas (cambio de tipo); comparten groupId.
   groupId     String         @default(cuid())
   // Estado vigente de la actividad tras esta acción (para reconstruir su historia).
   afterType   ActivityType?
-  afterAmount Decimal?
+  afterAmount Decimal?       @db.Decimal(14, 2)
   reason      String
   actorId     String
   actor       User           @relation("AdjustmentActor", fields: [actorId], references: [id])
@@ -121,7 +121,7 @@ model Goal {
   year      Int
   month     Int
   indicator Indicator
-  target    Decimal  
+  target    Decimal   @db.Decimal(14, 2)
 
   @@unique([sellerId, year, month, indicator])
 }

@@ -6,15 +6,15 @@ registros con historial.
 
 - **Moneda:** colones (₡). **Zona horaria:** `America/Costa_Rica` (define a qué mes pertenece cada registro).
 - **Stack:** Next.js 16 · TypeScript · Prisma 7 · Auth.js (credenciales) · Recharts · Tailwind.
-- **Base de datos:** SQLite en desarrollo. Supabase (PostgreSQL) en producción, publicado en Vercel
+- **Base de datos:** PostgreSQL en Supabase; la aplicación se publica en Vercel
   (ver [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md)).
 
 ## Puesta en marcha local
 
 ```bash
 npm install                 # también genera el cliente de Prisma
-cp .env.example .env        # y completa AUTH_SECRET y SEED_PASSWORD
-npx prisma migrate dev      # crea dev.db con el esquema
+cp .env.example .env        # completa las cadenas de Supabase, AUTH_SECRET y SEED_PASSWORD
+npx prisma migrate deploy   # crea las tablas en la base de Supabase
 npm run db:seed             # 2 gerentes y 3 vendedores de ejemplo
 npm run dev                 # http://localhost:3000
 ```
@@ -22,18 +22,18 @@ npm run dev                 # http://localhost:3000
 Genera `AUTH_SECRET` con `npx auth secret`. `SEED_PASSWORD` (mínimo 10 caracteres) es la contraseña
 inicial de los usuarios de ejemplo (`gerente1@pulso.local`, `vendedor1@pulso.local`, …).
 
-Opcional, solo desarrollo: `npm run db:demo` carga clientes, metas y actividades del mes actual para
-ver los paneles con datos.
+Datos de demostración (solo para una base de pruebas, nunca en producción):
+`ALLOW_DEMO_DATA=true npm run db:demo`.
 
 ## Scripts
 
 | Comando | Qué hace |
 |---|---|
 | `npm run dev` / `build` / `start` | Servidor de desarrollo, compilación y producción |
-| `npm test` | Pruebas unitarias y de integración (usan una BD temporal) |
+| `npm test` | Pruebas unitarias y de integración (la integración usa un esquema temporal en Supabase) |
 | `npm run lint` | ESLint |
-| `npm run db:migrate` | Crea/aplica migraciones en desarrollo |
-| `npm run db:deploy` | Aplica migraciones existentes (producción) |
+| `npm run db:migrate` | Crea migraciones en desarrollo (requiere base de sombra) |
+| `npm run db:deploy` | Aplica las migraciones existentes |
 | `npm run db:seed` / `db:demo` | Usuarios de ejemplo / datos de demostración |
 
 ## Cómo está hecho

@@ -1,12 +1,19 @@
-// Datos de demostración SOLO para desarrollo: npm run db:demo
+// Datos de demostración SOLO para desarrollo: ALLOW_DEMO_DATA=true npm run db:demo
 // Crea clientes, metas del mes actual y actividades con avances distintos por vendedor.
 import "dotenv/config";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient, type ActivityType, type Indicator } from "../src/generated/prisma/client";
 import { periodOf } from "../src/lib/period";
 
+if (process.env.ALLOW_DEMO_DATA !== "true") {
+  throw new Error(
+    "Este script inserta datos falsos. Si la base es la de producción NO lo ejecutes. " +
+      "Para usarlo en desarrollo: ALLOW_DEMO_DATA=true npm run db:demo",
+  );
+}
+
 const prisma = new PrismaClient({
-  adapter: new PrismaBetterSqlite3({ url: process.env.DATABASE_URL ?? "file:./dev.db" }),
+  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
 });
 
 const GOALS: Record<Indicator, number> = {
