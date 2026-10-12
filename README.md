@@ -1,36 +1,74 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Pulso Comercial Corderaguas
 
-## Getting Started
+Seguimiento de la actividad de cada vendedor y de su avance contra metas mensuales. Los vendedores
+registran actividades y ventas; gerencia ve el avance del equipo, define metas y corrige o anula
+registros con historial.
 
-First, run the development server:
+- **Moneda:** colones (₡). **Zona horaria:** `America/Costa_Rica` (define a qué mes pertenece cada registro).
+- **Stack:** Next.js 16 · TypeScript · Prisma 7 · Auth.js (credenciales) · Recharts · Tailwind.
+- **Base de datos:** SQLite en desarrollo. Supabase (PostgreSQL) en producción, publicado en Vercel
+  (ver [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md)).
+
+## Puesta en marcha local
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install                 # también genera el cliente de Prisma
+cp .env.example .env        # y completa AUTH_SECRET y SEED_PASSWORD
+npx prisma migrate dev      # crea dev.db con el esquema
+npm run db:seed             # 2 gerentes y 3 vendedores de ejemplo
+npm run dev                 # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Genera `AUTH_SECRET` con `npx auth secret`. `SEED_PASSWORD` (mínimo 10 caracteres) es la contraseña
+inicial de los usuarios de ejemplo (`gerente1@pulso.local`, `vendedor1@pulso.local`, …).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Opcional, solo desarrollo: `npm run db:demo` carga clientes, metas y actividades del mes actual para
+ver los paneles con datos.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Scripts
 
-## Learn More
+| Comando | Qué hace |
+|---|---|
+| `npm run dev` / `build` / `start` | Servidor de desarrollo, compilación y producción |
+| `npm test` | Pruebas unitarias y de integración (usan una BD temporal) |
+| `npm run lint` | ESLint |
+| `npm run db:migrate` | Crea/aplica migraciones en desarrollo |
+| `npm run db:deploy` | Aplica migraciones existentes (producción) |
+| `npm run db:seed` / `db:demo` | Usuarios de ejemplo / datos de demostración |
 
-To learn more about Next.js, take a look at the following resources:
+## Cómo está hecho
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Actividades inmutables.** Corregir o anular nunca edita el registro: crea un *ajuste* con deltas de
+  cantidad y monto que cuenta en el **mes actual**, aunque el registro sea de un periodo cerrado. Cada
+  ajuste guarda quién, cuándo y el motivo. Lógica en `src/lib/adjustments.ts`.
+- **Avance** = actividades del mes + ajustes del mes (`src/lib/indicators.ts`, `src/lib/stats.ts`).
+  Progreso = avance ÷ meta. Faltante = meta − avance (cero si se alcanza). Estado según el ritmo esperado
+  del mes (día ÷ días del mes).
+- **Permisos en el servidor.** Cada página y acción llama a `requireUser(rol)` (`src/lib/session.ts`), que
+  valida contra la BD: un usuario desactivado pierde acceso de inmediato. El proxy (`src/proxy.ts`) solo
+  hace redirecciones de cortesía. Un vendedor solo recibe consultas filtradas por su propio id.
+- **Seguridad:** contraseñas con bcrypt, bloqueo de 15 min tras 5 intentos fallidos, mensajes de error
+  que no revelan qué correos existen, cabeceras de seguridad (`next.config.ts`), validación con Zod.
+- **Historial:** tabla `AuditLog` con quién/cuándo/antes/después de cambios en clientes, metas,
+  usuarios y actividades (pantalla `/historial`, solo gerencia).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Estructura
 
-## Deploy on Vercel
+```
+prisma/            esquema, migraciones, seed y datos de demostración
+src/app/(app)/     pantallas autenticadas (gerente, vendedor, actividades, clientes, metas, usuarios, historial)
+src/app/login/     inicio de sesión
+src/lib/           reglas de negocio puras (periodos, indicadores, ajustes, bloqueo) y acceso a datos
+src/components/    tablas, gráficas y piezas de interfaz compartidas
+docs/              manual de usuario, despliegue y criterios de aceptación
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Documentación
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [Manual de usuario](docs/MANUAL.md)
+- [Despliegue en Supabase y Vercel](docs/DESPLIEGUE.md)
+- [Criterios de aceptación y su verificación](docs/CRITERIOS_ACEPTACION.md)
+
+## Fuera del alcance inicial
+
+Envío de correos, exportación de reportes e integraciones con otros sistemas.

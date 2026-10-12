@@ -45,6 +45,9 @@ model User {
   role         Role
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
+  // Bloqueo temporal tras varios intentos de acceso fallidos.
+  failedLogins Int       @default(0)
+  lockedUntil  DateTime?
 
   activities  Activity[]   @relation("ActivitySeller")
   goals       Goal[]

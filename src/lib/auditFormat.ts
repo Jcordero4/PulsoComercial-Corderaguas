@@ -11,6 +11,7 @@ const ACTION_LABELS: Record<string, string> = {
   ACTIVAR: "Activación",
   DESACTIVAR: "Desactivación",
   RESTABLECER_CLAVE: "Cambio de contraseña",
+  DESBLOQUEAR: "Desbloqueo",
   ANULAR: "Anulación",
   CORREGIR: "Corrección",
 };

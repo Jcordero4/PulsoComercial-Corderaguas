@@ -75,11 +75,26 @@ export async function resetPassword(
   if (!target) return { error: "Usuario no encontrado" };
   await prisma.user.update({
     where: { id },
-    data: { passwordHash: await bcrypt.hash(parsed.data, BCRYPT_ROUNDS) },
+    data: {
+      passwordHash: await bcrypt.hash(parsed.data, BCRYPT_ROUNDS),
+      failedLogins: 0,
+      lockedUntil: null, // cambiar la clave también levanta el bloqueo por intentos fallidos
+    },
   });
   // El historial registra el evento, nunca la contraseña ni su hash.
   await prisma.auditLog.create({
     data: { actorId: actor.id, entity: "User", entityId: id, action: "RESTABLECER_CLAVE" },
   });
   return { ok: true };
+}
+
+export async function unlockUser(id: string) {
+  const actor = await requireUser("GERENTE");
+  const target = await prisma.user.findUnique({ where: { id } });
+  if (!target) return;
+  await prisma.user.update({ where: { id }, data: { failedLogins: 0, lockedUntil: null } });
+  await prisma.auditLog.create({
+    data: { actorId: actor.id, entity: "User", entityId: id, action: "DESBLOQUEAR" },
+  });
+  revalidatePath("/usuarios");
 }
