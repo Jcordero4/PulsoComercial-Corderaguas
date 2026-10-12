@@ -60,3 +60,14 @@ export const MONTH_NAMES = [
 
 export const formatTarget = (indicator: IndicatorValue, v: number | string | { toString(): string }) =>
   indicator === "VENTAS_MONTO" ? formatColones(v) : Number(v.toString()).toLocaleString("es-CR");
+
+// Etiquetas cortas para el eje de las gráficas (evitan que los nombres choquen).
+export const INDICATOR_SHORT: Record<IndicatorValue, string> = {
+  LLAMADAS: "Llamadas",
+  VISITAS: "Visitas",
+  REUNIONES: "Reuniones",
+  COTIZACIONES: "Cotiz.",
+  VENTAS_CANTIDAD: "Ventas (#)",
+  SEGUIMIENTOS: "Seguim.",
+  VENTAS_MONTO: "Ventas (₡)",
+};
