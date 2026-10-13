@@ -1,6 +1,6 @@
 # Criterios de aceptación y su verificación
 
-Verificado en local contra la base real de Supabase (PostgreSQL). Falta solo la publicación en Vercel.
+Verificado en local y en producción (Vercel + Supabase/PostgreSQL). Los 8 criterios cumplidos.
 
 | # | Criterio | Cómo se verificó | Estado |
 |---|---|---|---|
@@ -11,8 +11,15 @@ Verificado en local contra la base real de Supabase (PostgreSQL). Falta solo la 
 | 5 | Una venta suma cantidad y acumula su monto | Pruebas unitarias y de integración; verificado en navegador (monto `150000,50` → ₡150 000,50) | ✅ |
 | 6 | El panel compara avance con la meta y muestra faltante o meta alcanzada | Pruebas de `progressOf`/`statusOf`; panel verificado con datos de demostración | ✅ |
 | 7 | Un ajuste de una venta de periodo cerrado cuenta en el mes actual (monto y cantidad) y guarda quién y cuándo | Prueba de integración y navegador: venta de setiembre corregida y anulada; setiembre sin cambio, octubre −1 venta y −₡450 000; historial con autor, fecha y motivo | ✅ |
-| 8 | Los datos siguen disponibles tras cerrar e iniciar sesión | Contra Supabase: inicio de sesión repetido por script (gerente y vendedor) y los usuarios y datos persisten en PostgreSQL; en navegador se verificó con la base local anterior. Falta repetirlo en la URL de Vercel | ✅ local · ⏳ Vercel |
-| — | Almacenamiento persistente en base de datos y acceso web | Base de datos: PostgreSQL de Supabase, verificada. Acceso web: pendiente de publicar en Vercel (ver `DESPLIEGUE.md`) | ✅ BD · ⏳ Vercel |
+| 8 | Los datos siguen disponibles tras cerrar e iniciar sesión | En producción (Vercel + Supabase): se cerró sesión y se volvió a entrar con los usuarios y datos intactos. Verificado manualmente por el responsable del proyecto el 2026-10-13 con la lista de `DESPLIEGUE.md` | ✅ |
+| — | Almacenamiento persistente en base de datos y acceso web | PostgreSQL de Supabase y publicación en Vercel. Comprobado sin sesión: HTTPS, cabeceras de seguridad y redirección de todas las rutas protegidas a `/login`; con sesión: recorrido completo de la lista de comprobación | ✅ |
+
+## Verificación en producción (2026-10-13)
+
+- Sin sesión (automático): `/login` por HTTPS, cabeceras de seguridad y las 9 rutas protegidas redirigen a `/login`.
+- Con sesión (manual, por el responsable): inicio de sesión, creación de usuarios reales, desactivación de los de
+  ejemplo, registro de cliente y venta, metas y progreso, corrección y anulación con historial, y persistencia
+  tras cerrar y abrir sesión.
 
 ## Pruebas automáticas
 

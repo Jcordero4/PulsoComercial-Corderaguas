@@ -6,8 +6,8 @@ registros con historial.
 
 - **Moneda:** colones (₡). **Zona horaria:** `America/Costa_Rica` (define a qué mes pertenece cada registro).
 - **Stack:** Next.js 16 · TypeScript · Prisma 7 · Auth.js (credenciales) · Recharts · Tailwind.
-- **Base de datos:** PostgreSQL en Supabase; la aplicación se publica en Vercel
-  (ver [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md)).
+- **Base de datos:** PostgreSQL en Supabase; la aplicación está publicada en Vercel
+  (https://pulso-comercial-corderaguas-lt11.vercel.app, ver [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md)).
 
 ## Puesta en marcha local
 
