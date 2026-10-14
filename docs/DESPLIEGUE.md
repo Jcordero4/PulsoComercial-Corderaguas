@@ -33,6 +33,8 @@ proyecto para desarrollo.
    - `AUTH_SECRET` — **uno distinto al de desarrollo**, generado con `npx auth secret`.
    - `AUTH_TRUST_HOST=true` — solo si no despliegas en Vercel (allí se activa solo). Sin esto el inicio de
      sesión falla con "UntrustedHost".
+   - `CRON_SECRET` — aleatorio de 16+ caracteres. Protege la tarea diaria que evita que Supabase pause el
+     proyecto (ver «Tarea diaria» abajo). Tras agregarla hay que **volver a desplegar** para que tome efecto.
    - **No** definas `SEED_PASSWORD` en Vercel: solo se usa en tu computadora.
 3. `postinstall` ejecuta `prisma generate`. Las migraciones se aplican aparte (`npx prisma migrate deploy`
    desde tu computadora), no en cada build.
@@ -56,11 +58,26 @@ contraseñas. Los datos de demostración (`prisma/demo.ts`) son solo para una ba
 - [ ] Las cuentas de ejemplo están desactivadas y las contraseñas iniciales cambiadas.
 - [ ] El sitio responde solo por HTTPS (Vercel lo hace por defecto).
 
+## Tarea diaria que evita la pausa de Supabase
+
+El plan gratuito de Supabase pausa los proyectos con poca actividad durante 7 días. Para evitarlo,
+`vercel.json` programa una llamada diaria a `/api/cron/mantener-activo` (13:00 UTC, 7:00 a. m. en Costa Rica), que
+hace una consulta mínima (`SELECT 1`) a la base. Quien ejecuta la tarea es **Vercel**, no tu computadora.
+
+- La ruta exige `Authorization: Bearer <CRON_SECRET>` (Vercel lo envía solo). Sin `CRON_SECRET` rechaza todo.
+- En el plan Hobby corre una vez al día, en cualquier momento dentro de esa hora. Solo se ejecuta en el
+  despliegue de Producción. Si falla, Vercel **no reintenta**.
+- **Cómo comprobar que corre:** Vercel → proyecto → *Settings → Cron Jobs* (ver la tarea y su última ejecución,
+  y *View Logs*). Revísalo la primera semana y luego de vez en cuando.
+- Si ves un 401 en el log: falta o es distinto `CRON_SECRET` en Vercel, o no se volvió a desplegar tras agregarlo.
+- Es un parche para el plan gratuito. Para datos reales de producción, el plan de pago de Supabase elimina las
+  pausas y trae respaldos.
+
 ## Seguridad y mantenimiento
 
 - Respaldos: revisa el plan de Supabase (el gratuito no incluye respaldos diarios descargables) y define
   cómo respaldar antes de cargar datos reales.
-- El plan gratuito de Supabase pausa los proyectos inactivos; el plan de pago evita pausas.
+- El plan gratuito de Supabase pausa los proyectos inactivos (ver «Tarea diaria»); el plan de pago evita pausas.
 - Rota `AUTH_SECRET` y la contraseña de la base si se filtran (rotar `AUTH_SECRET` cierra todas las sesiones).
 - No compartas el `.env` ni las cadenas de conexión por chat ni capturas de pantalla.
 - `npm audit` reporta vulnerabilidades altas en `mysql2` y `deepmerge-ts`, dependencias internas de la CLI de
